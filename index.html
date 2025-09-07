@@ -385,6 +385,66 @@
         .github-info a:hover {
             text-decoration: underline;
         }
+
+        /* Toggle switch for torch */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        .toggle-label {
+            font-weight: 600;
+            color: #cccccc;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #2b2b2b;
+            transition: .4s;
+            border-radius: 24px;
+            border: 1px solid rgba(118, 185, 0, 0.2);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 3px;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #76b900;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+            background-color: white;
+        }
     </style>
 </head>
 <body>
@@ -431,10 +491,10 @@
                 <div class="control-group">
                     <label for="model-select">Select 3D Model:</label>
                     <select id="model-select">
-                        <option value="models/object1.obj">Object 1</option>
-                        <option value="models/object2.obj">Object 2</option>
-                        <option value="models/object3.obj">Object 3</option>
-                        <option value="models/object4.obj">Object 4</option>
+                        <option value="models/object1.obj">Object 1 (OBJ)</option>
+                        <option value="models/object2.obj">Object 2 (OBJ)</option>
+                        <option value="models/object3.glb">Object 3 (GLB)</option>
+                        <option value="models/object4.glb">Object 4 (GLB)</option>
                     </select>
                 </div>
                 
@@ -462,6 +522,17 @@
                         <option value="gradient">Gradient</option>
                     </select>
                 </div>
+
+                <div class="control-group">
+                    <label>Torch Light:</label>
+                    <div class="toggle-container">
+                        <span class="toggle-label">Off/On</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="torch-toggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -472,6 +543,7 @@
                 <li><strong>Mobile:</strong> One finger to rotate, two fingers pinch to zoom, two fingers drag to pan</li>
                 <li>Use the dropdown to switch between different 3D models</li>
                 <li>Click the full screen button for an immersive viewing experience</li>
+                <li>Toggle the torch light to illuminate the model from the camera's perspective</li>
             </ul>
         </div>
         
@@ -487,6 +559,8 @@
         // Variables for Three.js
         let scene, camera, renderer, controls;
         let currentModel = null;
+        let torchLight = null;
+        let isTorchOn = false;
         
         // Initialize the 3D viewer
         function init() {
@@ -520,6 +594,14 @@
             light3.position.set(0, 0, 5);
             scene.add(light3);
             
+            // Create torch light (initially not added to scene)
+            torchLight = new THREE.SpotLight(0xffffff, 1, 20, Math.PI / 6, 0.5, 1);
+            torchLight.visible = false;
+            torchLight.position.set(0, 0, 0);
+            torchLight.target.position.set(0, 0, -1);
+            camera.add(torchLight);
+            camera.add(torchLight.target);
+            
             // Add orbit controls
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
@@ -548,6 +630,15 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Toggle torch light
+        function toggleTorch(isOn) {
+            isTorchOn = isOn;
+            torchLight.visible = isOn;
+            
+            // Update UI
+            document.getElementById('torch-toggle').checked = isOn;
         }
         
         // Load a 3D model from the models directory
@@ -596,27 +687,13 @@
                             scene.add(object);
                             
                             // Center the model
-                            const box = new THREE.Box3().setFromObject(object);
-                            const center = box.getCenter(new THREE.Vector3());
-                            const size = box.getSize(new THREE.Vector3());
-                            
-                            object.position.x += (object.position.x - center.x);
-                            object.position.y += (object.position.y - center.y);
-                            object.position.z += (object.position.z - center.z);
-                            
-                            // Adjust camera
-                            const maxDim = Math.max(size.x, size.y, size.z);
-                            const fov = camera.fov * (Math.PI / 180);
-                            let cameraZ = Math.abs(maxDim / Math.sin(fov / 2));
-                            
-                            camera.position.z = cameraZ * 1.5;
-                            controls.update();
+                            centerModel(object);
                             
                             // Update model info
                             document.querySelector('.model-info').innerHTML = `
                                 <h3>Model Loaded Successfully</h3>
                                 <p>Now viewing: ${modelPath.split('/').pop()}</p>
-                                <p>Dimensions: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)}</p>
+                                <p>Format: OBJ</p>
                             `;
                             
                             // Hide loading indicator
@@ -632,11 +709,63 @@
                         showPlaceholderModel();
                         document.querySelector('.loading').style.display = 'none';
                     });
+            } else if (extension === 'glb' || extension === 'gltf') {
+                // Load GLB/GLTF file
+                const gltfLoader = new THREE.GLTFLoader();
+                
+                gltfLoader.load(
+                    modelPath,
+                    function(gltf) {
+                        currentModel = gltf.scene;
+                        scene.add(currentModel);
+                        
+                        // Center the model
+                        centerModel(currentModel);
+                        
+                        // Update model info
+                        document.querySelector('.model-info').innerHTML = `
+                            <h3>Model Loaded Successfully</h3>
+                            <p>Now viewing: ${modelPath.split('/').pop()}</p>
+                            <p>Format: GLB</p>
+                        `;
+                        
+                        // Hide loading indicator
+                        document.querySelector('.loading').style.display = 'none';
+                    },
+                    function(xhr) {
+                        // Progress callback
+                        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+                    },
+                    function(error) {
+                        console.error('Error loading model:', error);
+                        showPlaceholderModel();
+                        document.querySelector('.loading').style.display = 'none';
+                    }
+                );
             } else {
                 // Unsupported format
                 showPlaceholderModel();
                 document.querySelector('.loading').style.display = 'none';
             }
+        }
+        
+        // Center the model in the view
+        function centerModel(object) {
+            const box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            
+            object.position.x -= center.x;
+            object.position.y -= center.y;
+            object.position.z -= center.z;
+            
+            // Adjust camera
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = Math.abs(maxDim / Math.sin(fov / 2));
+            
+            camera.position.z = cameraZ * 1.5;
+            controls.update();
         }
         
         // Show a placeholder model if the requested model can't be loaded
@@ -662,6 +791,7 @@
                     <li>models/</li>
                     <li>  └── object1.obj</li>
                     <li>  └── object2.obj</li>
+                    <li>  └── object3.glb</li>
                     <li>  └── ...etc</li>
                 </ul>
             `;
@@ -717,6 +847,10 @@
                     scene.background = texture;
                     break;
             }
+        });
+        
+        document.getElementById('torch-toggle').addEventListener('change', function() {
+            toggleTorch(this.checked);
         });
         
         function exitFullscreen() {
