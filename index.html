@@ -7,7 +7,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
         * {
@@ -462,6 +461,18 @@
             max-height: 100%;
             object-fit: contain;
         }
+
+        .error-message {
+            color: #ff5555;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .success-message {
+            color: #76b900;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -499,6 +510,7 @@
                 <div class="drive-info">
                     <h3>Google Drive Integration</h3>
                     <p>Load models directly from Google Drive. Make sure to set the sharing permissions to "Anyone with the link".</p>
+                    <p class="success-message" id="status-message">Ready to load your model</p>
                 </div>
             </div>
             
@@ -642,6 +654,31 @@
             
             // Hide loading indicator initially
             document.querySelector('.loading').style.display = 'none';
+            
+            // Load a sample model to demonstrate functionality
+            loadSampleModel();
+        }
+        
+        // Load a sample model for demonstration
+        function loadSampleModel() {
+            // Create a simple 3D model for demonstration
+            const geometry = new THREE.BoxGeometry(2, 2, 2);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x76b900,
+                shininess: 100,
+                specular: 0x222222,
+                wireframe: false
+            });
+            
+            currentModel = new THREE.Mesh(geometry, material);
+            scene.add(currentModel);
+            
+            // Update model info
+            document.querySelector('.model-info').innerHTML = `
+                <h3>Demo Model Loaded</h3>
+                <p>Paste a Google Drive link above to load your own model</p>
+                <p>Supported formats: .glb, .gltf, .obj</p>
+            `;
         }
         
         // Animation loop
@@ -674,8 +711,10 @@
             
             // Convert share link to direct download link
             if (url.includes('drive.google.com/file/d/')) {
-                const fileId = url.match(/file\/d\/(.*?)\//)[1];
-                return `https://drive.google.com/uc?export=download&id=${fileId}`;
+                const fileIdMatch = url.match(/file\/d\/([^\/]+)/);
+                if (fileIdMatch && fileIdMatch[1]) {
+                    return `https://drive.google.com/uc?export=download&id=${fileIdMatch[1]}`;
+                }
             }
             
             // If it's a different format, return as-is
@@ -687,11 +726,14 @@
             // Remove current model if exists
             if (currentModel) {
                 scene.remove(currentModel);
+                currentModel = null;
             }
             
             // Show loading indicator
             document.querySelector('.loading').style.display = 'block';
             document.querySelector('.loading p').textContent = 'Loading 3D Model...';
+            document.getElementById('status-message').textContent = 'Loading model...';
+            document.getElementById('status-message').className = 'success-message';
             
             // Check file extension
             const extension = modelPath.split('.').pop().toLowerCase();
@@ -703,7 +745,7 @@
                 fetch(modelPath)
                     .then(response => {
                         if (!response.ok) {
-                            throw new Error('Model not found');
+                            throw new Error('Model not found or access denied');
                         }
                         return response.text();
                     })
@@ -746,22 +788,29 @@
                             
                             // Hide loading indicator
                             document.querySelector('.loading').style.display = 'none';
+                            document.getElementById('status-message').textContent = 'Model loaded successfully!';
                         } catch (error) {
                             console.error('Error parsing model:', error);
-                            showPlaceholderModel();
-                            document.querySelector('.loading').style.display = 'none';
+                            showErrorModel('Error parsing OBJ file: ' + error.message);
                         }
                     })
                     .catch(error => {
                         console.error('Error loading model:', error);
-                        showPlaceholderModel();
-                        document.querySelector('.loading').style.display = 'none';
+                        showErrorModel('Failed to load model: ' + error.message);
                     });
             } else if (extension === 'glb' || extension === 'gltf') {
                 // Load GLB/GLTF file
                 const gltfLoader = new THREE.GLTFLoader();
                 
-                gltfLoader.load(
+                // Add progress monitoring
+                const manager = new THREE.LoadingManager();
+                manager.onProgress = function(url, loaded, total) {
+                    document.querySelector('.loading p').textContent = `Loading: ${Math.round(loaded/total*100)}%`;
+                };
+                
+                const gltfLoaderWithManager = new THREE.GLTFLoader(manager);
+                
+                gltfLoaderWithManager.load(
                     modelPath,
                     function(gltf) {
                         currentModel = gltf.scene;
@@ -779,6 +828,7 @@
                         
                         // Hide loading indicator
                         document.querySelector('.loading').style.display = 'none';
+                        document.getElementById('status-message').textContent = 'Model loaded successfully!';
                     },
                     function(xhr) {
                         // Progress callback
@@ -787,14 +837,12 @@
                     },
                     function(error) {
                         console.error('Error loading model:', error);
-                        showPlaceholderModel();
-                        document.querySelector('.loading').style.display = 'none';
+                        showErrorModel('Failed to load GLB/GLTF model. This might be due to CORS restrictions. Try downloading the file and serving it from your own server.');
                     }
                 );
             } else {
                 // Unsupported format
-                showPlaceholderModel();
-                document.querySelector('.loading').style.display = 'none';
+                showErrorModel('Unsupported file format: ' + extension + '. Please use .obj, .glb, or .gltf files.');
             }
         }
         
@@ -817,11 +865,11 @@
             controls.update();
         }
         
-        // Show a placeholder model if the requested model can't be loaded
-        function showPlaceholderModel() {
+        // Show an error message and placeholder model
+        function showErrorModel(message) {
             const geometry = new THREE.BoxGeometry(2, 2, 2);
             const material = new THREE.MeshPhongMaterial({
-                color: 0x76b900,
+                color: 0xff5555,
                 shininess: 100,
                 specular: 0x222222,
                 wireframe: true
@@ -832,7 +880,8 @@
             
             // Add a message to the model info box
             document.querySelector('.model-info').innerHTML = `
-                <h3>Model Not Found or Failed to Load</h3>
+                <h3>Error Loading Model</h3>
+                <p>${message}</p>
                 <p>Please make sure:</p>
                 <ul>
                     <li>The Google Drive link is correct</li>
@@ -840,6 +889,13 @@
                     <li>You're using a supported format (.obj, .glb, .gltf)</li>
                 </ul>
             `;
+            
+            // Update status message
+            document.getElementById('status-message').textContent = 'Error: ' + message;
+            document.getElementById('status-message').className = 'error-message';
+            
+            // Hide loading indicator
+            document.querySelector('.loading').style.display = 'none';
         }
         
         // Apply texture to the model
