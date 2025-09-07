@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Model Viewer - Fixed Loading</title>
+    <title>3D Model Viewer - Fixed GLB Upload</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
@@ -537,7 +537,7 @@
                 </div>
                 <div class="logo-text">3D Viewer</div>
             </div>
-            <h1>3D Model Viewer - Fixed Loading</h1>
+            <h1>3D Model Viewer - Fixed GLB Upload</h1>
             <div class="nvidia-accent"></div>
             <p>Upload 3D models and textures directly from your device</p>
         </header>
@@ -779,60 +779,49 @@
                 // Load OBJ sample
                 const objLoader = new THREE.OBJLoader();
                 
-                // Use a more reliable approach for loading OBJ files
-                const xhr = new XMLHttpRequest();
-                xhr.open('GET', sampleModels.obj);
-                xhr.onprogress = function(e) {
-                    if (e.lengthComputable) {
-                        const percent = (e.loaded / e.total * 100);
+                objLoader.load(
+                    sampleModels.obj,
+                    function(object) {
+                        currentModel = object;
+                        
+                        // Set default material if none exists
+                        object.traverse(function(child) {
+                            if (child.isMesh) {
+                                child.material = new THREE.MeshPhongMaterial({
+                                    color: 0x76b900,
+                                    shininess: 100,
+                                    specular: 0x222222
+                                });
+                            }
+                        });
+                        
+                        scene.add(object);
+                        
+                        // Center the model
+                        centerModel(object);
+                        
+                        // Update model info
+                        document.querySelector('.model-info').innerHTML = `
+                            <h3>Sample OBJ Model Loaded</h3>
+                            <p>Now viewing: WaltHead.obj</p>
+                            <p>Format: OBJ</p>
+                            <p>Tip: You can apply a texture using the controls on the right</p>
+                        `;
+                        
+                        // Hide loading indicator
+                        document.getElementById('loading-indicator').style.display = 'none';
+                        document.getElementById('status-message').textContent = 'Sample OBJ model loaded successfully!';
+                    },
+                    function(xhr) {
+                        // Progress callback
+                        const percent = (xhr.loaded / xhr.total * 100);
                         document.querySelector('#loading-indicator p').textContent = `Loading: ${percent.toFixed(1)}%`;
-                    }
-                };
-                xhr.onload = function() {
-                    if (xhr.status === 200) {
-                        try {
-                            const object = objLoader.parse(xhr.responseText);
-                            currentModel = object;
-                            
-                            // Set default material if none exists
-                            object.traverse(function(child) {
-                                if (child.isMesh) {
-                                    child.material = new THREE.MeshPhongMaterial({
-                                        color: 0x76b900,
-                                        shininess: 100,
-                                        specular: 0x222222
-                                    });
-                                }
-                            });
-                            
-                            scene.add(object);
-                            
-                            // Center the model
-                            centerModel(object);
-                            
-                            // Update model info
-                            document.querySelector('.model-info').innerHTML = `
-                                <h3>Sample OBJ Model Loaded</h3>
-                                <p>Now viewing: WaltHead.obj</p>
-                                <p>Format: OBJ</p>
-                                <p>Tip: You can apply a texture using the controls on the right</p>
-                            `;
-                            
-                            // Hide loading indicator
-                            document.getElementById('loading-indicator').style.display = 'none';
-                            document.getElementById('status-message').textContent = 'Sample OBJ model loaded successfully!';
-                        } catch (error) {
-                            console.error('Error parsing sample model:', error);
-                            showErrorModel('Error parsing OBJ file. Please try another model.');
-                        }
-                    } else {
+                    },
+                    function(error) {
+                        console.error('Error loading sample model:', error);
                         showErrorModel('Failed to load sample OBJ model. Please try another model.');
                     }
-                };
-                xhr.onerror = function() {
-                    showErrorModel('Failed to load sample OBJ model. Please try another model.');
-                };
-                xhr.send();
+                );
             }
         }
         
@@ -876,9 +865,6 @@
             // Check file extension
             const fileName = file.name;
             const extension = fileName.split('.').pop().toLowerCase();
-            
-            // Create file URL
-            const fileURL = URL.createObjectURL(file);
             
             if (extension === 'obj') {
                 // Load OBJ file
@@ -938,37 +924,48 @@
                 // Load GLB/GLTF file
                 const gltfLoader = new THREE.GLTFLoader();
                 
-                gltfLoader.load(
-                    fileURL,
-                    function(gltf) {
-                        currentModel = gltf.scene;
-                        scene.add(currentModel);
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        // Parse the binary data
+                        const arrayBuffer = event.target.result;
                         
-                        // Center the model
-                        centerModel(currentModel);
-                        
-                        // Update model info
-                        document.querySelector('.model-info').innerHTML = `
-                            <h3>Model Loaded Successfully</h3>
-                            <p>Now viewing: ${fileName}</p>
-                            <p>Format: ${extension.toUpperCase()}</p>
-                            <p>GLB/GLTF files contain textures and materials</p>
-                        `;
-                        
-                        // Hide loading indicator
-                        document.getElementById('loading-indicator').style.display = 'none';
-                        document.getElementById('status-message').textContent = 'Model loaded successfully!';
-                    },
-                    function(xhr) {
-                        // Progress callback
-                        const percent = (xhr.loaded / xhr.total * 100);
-                        document.querySelector('#loading-indicator p').textContent = `Loading: ${percent.toFixed(1)}%`;
-                    },
-                    function(error) {
+                        gltfLoader.parse(
+                            arrayBuffer,
+                            '',
+                            function(gltf) {
+                                currentModel = gltf.scene;
+                                scene.add(currentModel);
+                                
+                                // Center the model
+                                centerModel(currentModel);
+                                
+                                // Update model info
+                                document.querySelector('.model-info').innerHTML = `
+                                    <h3>Model Loaded Successfully</h3>
+                                    <p>Now viewing: ${fileName}</p>
+                                    <p>Format: ${extension.toUpperCase()}</p>
+                                    <p>GLB/GLTF files contain textures and materials</p>
+                                `;
+                                
+                                // Hide loading indicator
+                                document.getElementById('loading-indicator').style.display = 'none';
+                                document.getElementById('status-message').textContent = 'Model loaded successfully!';
+                            },
+                            function(error) {
+                                console.error('Error parsing model:', error);
+                                showErrorModel('Error parsing GLB/GLTF file. The file might be corrupted or invalid.');
+                            }
+                        );
+                    } catch (error) {
                         console.error('Error loading model:', error);
                         showErrorModel('Failed to load GLB/GLTF model. The file might be corrupted or invalid.');
                     }
-                );
+                };
+                reader.onerror = function() {
+                    showErrorModel('Failed to read the file. Please try another file.');
+                };
+                reader.readAsArrayBuffer(file);
             } else {
                 // Unsupported format
                 showErrorModel('Unsupported file format: ' + extension + '. Please use .obj, .glb, or .gltf files.');
