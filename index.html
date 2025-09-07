@@ -137,7 +137,7 @@
             color: #cccccc;
         }
         
-        select, button {
+        select, button, input {
             width: 100%;
             padding: 14px;
             border: none;
@@ -161,13 +161,17 @@
             background-size: 16px;
         }
         
+        input {
+            cursor: text;
+        }
+        
         select:hover, button:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
             border-color: rgba(118, 185, 0, 0.5);
         }
         
-        select:focus, button:focus {
+        select:focus, button:focus, input:focus {
             outline: none;
             border-color: #76b900;
         }
@@ -445,6 +449,42 @@
             transform: translateX(26px);
             background-color: white;
         }
+
+        .tab-container {
+            display: flex;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background: #2b2b2b;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .tab.active {
+            background: #76b900;
+            color: #0c0c0c;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .drive-info {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #888;
+        }
     </style>
 </head>
 <body>
@@ -480,22 +520,57 @@
                 </div>
 
                 <div class="github-info">
-                    <h3>GitHub Hosting</h3>
-                    <p>This viewer is hosted on GitHub Pages. To add your own models, upload them to your repository and update the model list in the code.</p>
+                    <h3>Google Drive Integration</h3>
+                    <p>You can now load models directly from Google Drive. Make sure to set the sharing permissions to "Anyone with the link".</p>
                 </div>
             </div>
             
             <div class="controls-section">
                 <h2>Controls</h2>
                 
-                <div class="control-group">
-                    <label for="model-select">Select 3D Model:</label>
-                    <select id="model-select">
-                        <option value="models/object1.obj">Object 1 (OBJ)</option>
-                        <option value="models/object2.obj">Object 2 (OBJ)</option>
-                        <option value="models/object3.glb">Object 3 (GLB)</option>
-                        <option value="models/object4.glb">Object 4 (GLB)</option>
-                    </select>
+                <div class="tab-container">
+                    <div class="tab active" data-tab="local">Local Models</div>
+                    <div class="tab" data-tab="drive">Google Drive</div>
+                </div>
+                
+                <div class="tab-content active" id="local-tab">
+                    <div class="control-group">
+                        <label for="model-select">Select 3D Model:</label>
+                        <select id="model-select">
+                            <option value="models/object1.obj">Object 1 (OBJ)</option>
+                            <option value="models/object2.obj">Object 2 (OBJ)</option>
+                            <option value="models/object3.glb">Object 3 (GLB)</option>
+                            <option value="models/object4.glb">Object 4 (GLB)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <button id="load-local-model">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2L2 7l10 5 10-5-10-5zm0 2.5L20 7l-8 4-8-4 8-4.5z"/>
+                                <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+                            </svg>
+                            Load Selected Model
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="tab-content" id="drive-tab">
+                    <div class="control-group">
+                        <label for="drive-link">Google Drive Link:</label>
+                        <input type="text" id="drive-link" placeholder="Paste Google Drive shareable link">
+                        <p class="drive-info">Make sure the file is shared with "Anyone with the link"</p>
+                    </div>
+                    
+                    <div class="control-group">
+                        <button id="load-drive-model">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2L2 7l10 5 10-5-10-5zm0 2.5L20 7l-8 4-8-4 8-4.5z"/>
+                                <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+                            </svg>
+                            Load from Google Drive
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="control-group">
@@ -544,6 +619,7 @@
                 <li>Use the dropdown to switch between different 3D models</li>
                 <li>Click the full screen button for an immersive viewing experience</li>
                 <li>Toggle the torch light to illuminate the model from the camera's perspective</li>
+                <li>Use the Google Drive tab to load models directly from your Drive</li>
             </ul>
         </div>
         
@@ -641,7 +717,22 @@
             document.getElementById('torch-toggle').checked = isOn;
         }
         
-        // Load a 3D model from the models directory
+        // Convert Google Drive link to direct download link
+        function convertGoogleDriveLink(url) {
+            // Check if it's already a direct download link
+            if (url.includes('download')) return url;
+            
+            // Convert share link to direct download link
+            if (url.includes('drive.google.com/file/d/')) {
+                const fileId = url.match(/file\/d\/(.*?)\//)[1];
+                return `https://drive.google.com/uc?export=download&id=${fileId}`;
+            }
+            
+            // If it's a different format, return as-is (might work for some cases)
+            return url;
+        }
+        
+        // Load a 3D model
         function loadModel(modelPath) {
             // Remove current model if exists
             if (currentModel) {
@@ -658,7 +749,6 @@
                 // Load OBJ file
                 const objLoader = new THREE.OBJLoader();
                 
-                // For GitHub Pages, we need to handle potential CORS issues
                 fetch(modelPath)
                     .then(response => {
                         if (!response.ok) {
@@ -726,7 +816,7 @@
                         document.querySelector('.model-info').innerHTML = `
                             <h3>Model Loaded Successfully</h3>
                             <p>Now viewing: ${modelPath.split('/').pop()}</p>
-                            <p>Format: GLB</p>
+                            <p>Format: ${extension.toUpperCase()}</p>
                         `;
                         
                         // Hide loading indicator
@@ -784,22 +874,36 @@
             // Add a message to the model info box
             document.querySelector('.model-info').innerHTML = `
                 <h3>Model Not Found</h3>
-                <p>Please make sure the model files are in the "models" folder in your GitHub repository.</p>
-                <p>For GitHub Pages, your repository structure should look like:</p>
-                <ul>
-                    <li>index.html (this file)</li>
-                    <li>models/</li>
-                    <li>  └── object1.obj</li>
-                    <li>  └── object2.obj</li>
-                    <li>  └── object3.glb</li>
-                    <li>  └── ...etc</li>
-                </ul>
+                <p>Please make sure the model files are accessible.</p>
+                <p>For Google Drive links, ensure the file is shared with "Anyone with the link".</p>
             `;
         }
         
         // Event listeners
-        document.getElementById('model-select').addEventListener('change', function() {
-            loadModel(this.value);
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                this.classList.add('active');
+                document.getElementById(this.dataset.tab + '-tab').classList.add('active');
+            });
+        });
+        
+        document.getElementById('load-local-model').addEventListener('click', function() {
+            const modelPath = document.getElementById('model-select').value;
+            loadModel(modelPath);
+        });
+        
+        document.getElementById('load-drive-model').addEventListener('click', function() {
+            const driveLink = document.getElementById('drive-link').value;
+            if (!driveLink) {
+                alert('Please enter a Google Drive link');
+                return;
+            }
+            
+            const directLink = convertGoogleDriveLink(driveLink);
+            loadModel(directLink);
         });
         
         document.getElementById('fullscreen-btn').addEventListener('click', function() {
