@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Model Viewer with File Upload</title>
+    <title>3D Model Viewer with GLB Support</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
@@ -498,6 +498,31 @@
             color: #76b900;
             margin-bottom: 10px;
         }
+
+        .sample-models {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .sample-model-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px;
+            background: linear-gradient(to bottom, #2b2b2b 0%, #1f1f1f 100%);
+            border: 1px solid rgba(118, 185, 0, 0.3);
+            border-radius: 6px;
+            color: #76b900;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .sample-model-btn:hover {
+            background: linear-gradient(to bottom, #76b900 0%, #5b8c00 100%);
+            color: #0c0c0c;
+        }
     </style>
 </head>
 <body>
@@ -512,7 +537,7 @@
                 </div>
                 <div class="logo-text">3D Viewer</div>
             </div>
-            <h1>3D Model Viewer with File Upload</h1>
+            <h1>3D Model Viewer with GLB Support</h1>
             <div class="nvidia-accent"></div>
             <p>Upload 3D models and textures directly from your device</p>
         </header>
@@ -523,13 +548,13 @@
                     <div id="model-viewer"></div>
                     <div class="loading">
                         <div class="spinner"></div>
-                        <p>Waiting for model...</p>
+                        <p>Loading sample model...</p>
                     </div>
                 </div>
                 
                 <div class="model-info">
                     <h3>Model Information</h3>
-                    <p>Upload a 3D model file to view details and interact with the 3D rendering.</p>
+                    <p id="model-details">Loading sample model...</p>
                 </div>
 
                 <div class="file-info">
@@ -554,6 +579,11 @@
                         <p><small>Supported: .glb, .gltf, .obj</small></p>
                     </div>
                     <input type="file" id="model-upload" accept=".glb,.gltf,.obj" style="display: none;">
+                    
+                    <div class="sample-models">
+                        <div class="sample-model-btn" data-type="glb">Sample GLB</div>
+                        <div class="sample-model-btn" data-type="obj">Sample OBJ</div>
+                    </div>
                 </div>
                 
                 <div class="control-group">
@@ -618,6 +648,7 @@
                 <li><strong>Mobile:</strong> One finger to rotate, two fingers pinch to zoom, two fingers drag to pan</li>
                 <li>Toggle the torch light to illuminate the model from the camera's perspective</li>
                 <li>Apply custom textures to OBJ models using the texture upload option</li>
+                <li>GLB models include textures and materials - no need to add textures separately</li>
             </ul>
         </div>
         
@@ -634,6 +665,12 @@
         let torchLight = null;
         let isTorchOn = false;
         let currentTexture = null;
+        
+        // Sample models
+        const sampleModels = {
+            glb: 'https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models/2.0/Duck/glTF-Binary/Duck.glb',
+            obj: 'https://cdn.jsdelivr.net/gh/mrdoob/three.js/dev/examples/models/obj/walt/WaltHead.obj'
+        };
         
         // Initialize the 3D viewer
         function init() {
@@ -687,33 +724,105 @@
             // Start animation loop
             animate();
             
-            // Hide loading indicator initially
-            document.querySelector('.loading').style.display = 'none';
-            
             // Load a sample model to demonstrate functionality
-            loadSampleModel();
+            loadSampleModel('glb');
         }
         
         // Load a sample model for demonstration
-        function loadSampleModel() {
-            // Create a simple 3D model for demonstration
-            const geometry = new THREE.BoxGeometry(2, 2, 2);
-            const material = new THREE.MeshPhongMaterial({
-                color: 0x76b900,
-                shininess: 100,
-                specular: 0x222222,
-                wireframe: false
-            });
+        function loadSampleModel(type) {
+            // Show loading indicator
+            document.querySelector('.loading').style.display = 'block';
+            document.querySelector('.loading p').textContent = `Loading sample ${type.toUpperCase()} model...`;
             
-            currentModel = new THREE.Mesh(geometry, material);
-            scene.add(currentModel);
+            // Remove current model if exists
+            if (currentModel) {
+                scene.remove(currentModel);
+                currentModel = null;
+            }
             
-            // Update model info
-            document.querySelector('.model-info').innerHTML = `
-                <h3>Demo Model Loaded</h3>
-                <p>Upload a 3D model file to view your own model</p>
-                <p>Supported formats: .glb, .gltf, .obj</p>
-            `;
+            if (type === 'glb') {
+                // Load GLB sample
+                const gltfLoader = new THREE.GLTFLoader();
+                
+                gltfLoader.load(
+                    sampleModels.glb,
+                    function(gltf) {
+                        currentModel = gltf.scene;
+                        scene.add(currentModel);
+                        
+                        // Center the model
+                        centerModel(currentModel);
+                        
+                        // Update model info
+                        document.querySelector('.model-info').innerHTML = `
+                            <h3>Sample GLB Model Loaded</h3>
+                            <p>Now viewing: Duck.glb</p>
+                            <p>Format: GLB (Binary)</p>
+                            <p>GLB files contain textures and materials - no need to add textures separately</p>
+                        `;
+                        
+                        // Hide loading indicator
+                        document.querySelector('.loading').style.display = 'none';
+                        document.getElementById('status-message').textContent = 'Sample GLB model loaded successfully!';
+                    },
+                    function(xhr) {
+                        // Progress callback
+                        const percent = (xhr.loaded / xhr.total * 100);
+                        document.querySelector('.loading p').textContent = `Loading: ${percent.toFixed(1)}%`;
+                    },
+                    function(error) {
+                        console.error('Error loading sample model:', error);
+                        showErrorModel('Failed to load sample GLB model: ' + error.message);
+                    }
+                );
+            } else if (type === 'obj') {
+                // Load OBJ sample
+                const objLoader = new THREE.OBJLoader();
+                
+                fetch(sampleModels.obj)
+                    .then(response => response.text())
+                    .then(modelData => {
+                        try {
+                            const object = objLoader.parse(modelData);
+                            currentModel = object;
+                            
+                            // Set default material if none exists
+                            object.traverse(function(child) {
+                                if (child.isMesh) {
+                                    child.material = new THREE.MeshPhongMaterial({
+                                        color: 0x76b900,
+                                        shininess: 100,
+                                        specular: 0x222222
+                                    });
+                                }
+                            });
+                            
+                            scene.add(object);
+                            
+                            // Center the model
+                            centerModel(object);
+                            
+                            // Update model info
+                            document.querySelector('.model-info').innerHTML = `
+                                <h3>Sample OBJ Model Loaded</h3>
+                                <p>Now viewing: WaltHead.obj</p>
+                                <p>Format: OBJ</p>
+                                <p>Tip: You can apply a texture using the controls on the right</p>
+                            `;
+                            
+                            // Hide loading indicator
+                            document.querySelector('.loading').style.display = 'none';
+                            document.getElementById('status-message').textContent = 'Sample OBJ model loaded successfully!';
+                        } catch (error) {
+                            console.error('Error parsing sample model:', error);
+                            showErrorModel('Error parsing OBJ file: ' + error.message);
+                        }
+                    })
+                    .catch(error) {
+                        console.error('Error loading sample model:', error);
+                        showErrorModel('Failed to load sample OBJ model: ' + error.message);
+                    };
+            }
         }
         
         // Animation loop
@@ -833,6 +942,7 @@
                             <h3>Model Loaded Successfully</h3>
                             <p>Now viewing: ${fileName}</p>
                             <p>Format: ${extension.toUpperCase()}</p>
+                            <p>GLB/GLTF files contain textures and materials</p>
                         `;
                         
                         // Hide loading indicator
@@ -918,6 +1028,19 @@
                 return;
             }
             
+            // Check if the current model is an OBJ (GLB/GLTF models have their own textures)
+            let isOBJ = false;
+            currentModel.traverse(function(child) {
+                if (child.isMesh && child.material && !child.material.isMaterial) {
+                    isOBJ = true;
+                }
+            });
+            
+            if (!isOBJ) {
+                alert('Textures can only be applied to OBJ models. GLB/GLTF models come with their own textures.');
+                return;
+            }
+            
             currentModel.traverse(function(child) {
                 if (child.isMesh) {
                     child.material.map = currentTexture;
@@ -938,6 +1061,14 @@
         
         document.getElementById('model-drop-area').addEventListener('click', function() {
             document.getElementById('model-upload').click();
+        });
+        
+        // Add sample model buttons
+        document.querySelectorAll('.sample-model-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const type = this.getAttribute('data-type');
+                loadSampleModel(type);
+            });
         });
         
         // Add drag and drop for model files
