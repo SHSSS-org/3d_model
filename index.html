@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHSSS Headlines - 3D Model Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+            color: #e6e6e6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            margin-bottom: 30px;
+            border-bottom: 1px solid rgba(120, 120, 120, 0.3);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .logo-circle {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #76b900 0%, #5b8c00 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            box-shadow: 0 0 20px rgba(118, 185, 0, 0.5);
+        }
+        
+        .logo-text {
+            font-size: 2.8rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #76b900 0%, #5b8c00 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 10px rgba(118, 185, 0, 0.3);
+        }
+        
+        header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.8;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .viewer-section {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .viewer-container {
+            position: relative;
+            width: 100%;
+            height: 65vh;
+            background: rgba(20, 20, 20, 0.7);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(118, 185, 0, 0.3);
+        }
+        
+        #model-viewer {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls-section {
+            flex: 0 0 300px;
+            background: rgba(20, 20, 20, 0.7);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(118, 185, 0, 0.3);
+        }
+        
+        .controls-section h2 {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            color: #76b900;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(118, 185, 0, 0.3);
+            padding-bottom: 10px;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #cccccc;
+        }
+        
+        select, button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 6px;
+            background: linear-gradient(to bottom, #2b2b2b 0%, #1f1f1f 100%);
+            color: #e6e6e6;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(118, 185, 0, 0.2);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        select {
+            background: linear-gradient(to bottom, #2b2b2b 0%, #1f1f1f 100%);
+            color: #76b900;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2376b900'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 16px;
+        }
+        
+        select:hover, button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+            border-color: rgba(118, 185, 0, 0.5);
+        }
+        
+        select:focus, button:focus {
+            outline: none;
+            border-color: #76b900;
+        }
+        
+        button {
+            background: linear-gradient(to right, #76b900 0%, #5b8c00 100%);
+            color: #0c0c0c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        button.secondary {
+            background: linear-gradient(to bottom, #2b2b2b 0%, #1f1f1f 100%);
+            color: #76b900;
+        }
+        
+        .instructions {
+            background: rgba(20, 20, 20, 0.7);
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(118, 185, 0, 0.3);
+        }
+        
+        .instructions h2 {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            color: #76b900;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(118, 185, 0, 0.3);
+            padding-bottom: 10px;
+        }
+        
+        .instructions ul {
+            list-style-type: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 10px;
+            padding-left: 25px;
+            position: relative;
+            line-height: 1.6;
+        }
+        
+        .instructions li:before {
+            content: "•";
+            color: #76b900;
+            font-weight: bold;
+            position: absolute;
+            left: 10px;
+        }
+        
+        .fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            background: #0c0c0c;
+        }
+        
+        .fullscreen #model-viewer {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .exit-fullscreen {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 101;
+            background: linear-gradient(to right, #76b900 0%, #5b8c00 100%);
+            color: #0c0c0c;
+            border: none;
+            width: auto;
+            padding: 12px 20px;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            color: #76b900;
+            text-align: center;
+            z-index: 10;
+        }
+        
+        .spinner {
+            border: 5px solid rgba(118, 185, 0, 0.2);
+            border-radius: 50%;
+            border-top: 5px solid #76b900;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+            box-shadow: 0 0 20px rgba(118, 185, 0, 0.5);
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px 0;
+            margin-top: 40px;
+            border-top: 1px solid rgba(120, 120, 120, 0.3);
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        .powered-by {
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        
+        .powered-by span {
+            color: #76b900;
+            font-weight: 600;
+        }
+        
+        .copyright {
+            margin-bottom: 10px;
+        }
+        
+        .contact {
+            margin-top: 15px;
+        }
+        
+        .contact a {
+            color: #76b900;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .contact a:hover {
+            text-decoration: underline;
+            color: #5b8c00;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .controls-section {
+                flex: 1;
+                width: 100%;
+            }
+            
+            .viewer-container {
+                height: 50vh;
+            }
+            
+            header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .logo-text {
+                font-size: 2.2rem;
+            }
+        }
+        
+        /* NVIDIA style accents */
+        .nvidia-accent {
+            height: 4px;
+            background: linear-gradient(to right, #76b900 0%, #5b8c00 100%);
+            width: 100px;
+            margin: 15px auto;
+            border-radius: 2px;
+        }
+        
+        .model-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(30, 30, 30, 0.6);
+            border-radius: 8px;
+            border-left: 3px solid #76b900;
+        }
+        
+        .model-info h3 {
+            color: #76b900;
+            margin-bottom: 10px;
+        }
+
+        .github-info {
+            background: rgba(30, 30, 30, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 3px solid #76b900;
+        }
+
+        .github-info h3 {
+            color: #76b900;
+            margin-bottom: 10px;
+        }
+
+        .github-info a {
+            color: #76b900;
+            text-decoration: none;
+        }
+
+        .github-info a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-circle">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="#0c0c0c">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zm0 2.5L20 7l-8 4-8-4 8-4.5z"/>
+                        <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div class="logo-text">SHSSS</div>
+            </div>
+            <h1>3D Model Viewer</h1>
+            <div class="nvidia-accent"></div>
+            <p>Explore our collection of high-quality 3D models with real-time rendering</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="viewer-section">
+                <div class="viewer-container">
+                    <div id="model-viewer"></div>
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading 3D Model...</p>
+                    </div>
+                </div>
+                
+                <div class="model-info">
+                    <h3>Model Information</h3>
+                    <p>Select a model from the dropdown to view details and interact with the 3D rendering.</p>
+                </div>
+
+                <div class="github-info">
+                    <h3>GitHub Hosting</h3>
+                    <p>This viewer is hosted on GitHub Pages. To add your own models, upload them to your repository and update the model list in the code.</p>
+                </div>
+            </div>
+            
+            <div class="controls-section">
+                <h2>Controls</h2>
+                
+                <div class="control-group">
+                    <label for="model-select">Select 3D Model:</label>
+                    <select id="model-select">
+                        <option value="models/object1.obj">Object 1</option>
+                        <option value="models/object2.obj">Object 2</option>
+                        <option value="models/object3.obj">Object 3</option>
+                        <option value="models/object4.obj">Object 4</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="fullscreen-btn">View Options:</label>
+                    <button id="fullscreen-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                        </svg>
+                        Enter Full Screen
+                    </button>
+                    <button id="reset-view" class="secondary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                        </svg>
+                        Reset View
+                    </button>
+                </div>
+                
+                <div class="control-group">
+                    <label for="background-select">Background:</label>
+                    <select id="background-select">
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                        <option value="gradient">Gradient</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h2>Navigation Instructions</h2>
+            <ul>
+                <li><strong>Desktop:</strong> Drag to rotate, scroll to zoom, right-drag to pan</li>
+                <li><strong>Mobile:</strong> One finger to rotate, two fingers pinch to zoom, two fingers drag to pan</li>
+                <li>Use the dropdown to switch between different 3D models</li>
+                <li>Click the full screen button for an immersive viewing experience</li>
+            </ul>
+        </div>
+        
+        <footer>
+            <div class="powered-by">Powered by <span>flovvnetc</span></div>
+            <div class="copyright">© 2023 SHSSS Headlines. All rights reserved.</div>
+            <div class="contact">Contact: <a href="mailto:info@shsss-headlines.com">info@shsss-headlines.com</a></div>
+            <div class="contact">GitHub: <a href="https://github.com/yourusername/shsss-3d-viewer" target="_blank">github.com/yourusername/shsss-3d-viewer</a></div>
+        </footer>
+    </div>
+
+    <script>
+        // Variables for Three.js
+        let scene, camera, renderer, controls;
+        let currentModel = null;
+        
+        // Initialize the 3D viewer
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0c0c0c);
+            
+            // Add ambient light
+            scene.add(new THREE.AmbientLight(0x666666));
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('model-viewer').appendChild(renderer.domElement);
+            
+            // Add directional lights (NVIDIA-style lighting)
+            const light1 = new THREE.DirectionalLight(0x76b900, 0.5);
+            light1.position.set(5, 5, 5);
+            scene.add(light1);
+            
+            const light2 = new THREE.DirectionalLight(0x0055ff, 0.4);
+            light2.position.set(-5, -5, -5);
+            scene.add(light2);
+            
+            const light3 = new THREE.DirectionalLight(0xffffff, 0.6);
+            light3.position.set(0, 0, 5);
+            scene.add(light3);
+            
+            // Add orbit controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.rotateSpeed = 0.8;
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Load initial model
+            loadModel('models/object1.obj');
+            
+            // Start animation loop
+            animate();
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Load a 3D model from the models directory
+        function loadModel(modelPath) {
+            // Remove current model if exists
+            if (currentModel) {
+                scene.remove(currentModel);
+            }
+            
+            // Show loading indicator
+            document.querySelector('.loading').style.display = 'block';
+            
+            // Check file extension
+            const extension = modelPath.split('.').pop().toLowerCase();
+            
+            if (extension === 'obj') {
+                // Load OBJ file
+                const objLoader = new THREE.OBJLoader();
+                
+                // For GitHub Pages, we need to handle potential CORS issues
+                fetch(modelPath)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Model not found');
+                        }
+                        return response.text();
+                    })
+                    .then(modelData => {
+                        try {
+                            const object = objLoader.parse(modelData);
+                            currentModel = object;
+                            
+                            // Set default material if none exists
+                            object.traverse(function(child) {
+                                if (child.isMesh) {
+                                    if (!child.material || child.material.length === 0) {
+                                        child.material = new THREE.MeshPhongMaterial({
+                                            color: 0x76b900,
+                                            shininess: 100,
+                                            specular: 0x222222
+                                        });
+                                    }
+                                }
+                            });
+                            
+                            scene.add(object);
+                            
+                            // Center the model
+                            const box = new THREE.Box3().setFromObject(object);
+                            const center = box.getCenter(new THREE.Vector3());
+                            const size = box.getSize(new THREE.Vector3());
+                            
+                            object.position.x += (object.position.x - center.x);
+                            object.position.y += (object.position.y - center.y);
+                            object.position.z += (object.position.z - center.z);
+                            
+                            // Adjust camera
+                            const maxDim = Math.max(size.x, size.y, size.z);
+                            const fov = camera.fov * (Math.PI / 180);
+                            let cameraZ = Math.abs(maxDim / Math.sin(fov / 2));
+                            
+                            camera.position.z = cameraZ * 1.5;
+                            controls.update();
+                            
+                            // Update model info
+                            document.querySelector('.model-info').innerHTML = `
+                                <h3>Model Loaded Successfully</h3>
+                                <p>Now viewing: ${modelPath.split('/').pop()}</p>
+                                <p>Dimensions: ${size.x.toFixed(2)} x ${size.y.toFixed(2)} x ${size.z.toFixed(2)}</p>
+                            `;
+                            
+                            // Hide loading indicator
+                            document.querySelector('.loading').style.display = 'none';
+                        } catch (error) {
+                            console.error('Error parsing model:', error);
+                            showPlaceholderModel();
+                            document.querySelector('.loading').style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading model:', error);
+                        showPlaceholderModel();
+                        document.querySelector('.loading').style.display = 'none';
+                    });
+            } else {
+                // Unsupported format
+                showPlaceholderModel();
+                document.querySelector('.loading').style.display = 'none';
+            }
+        }
+        
+        // Show a placeholder model if the requested model can't be loaded
+        function showPlaceholderModel() {
+            const geometry = new THREE.BoxGeometry(2, 2, 2);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x76b900,
+                shininess: 100,
+                specular: 0x222222,
+                wireframe: true
+            });
+            
+            currentModel = new THREE.Mesh(geometry, material);
+            scene.add(currentModel);
+            
+            // Add a message to the model info box
+            document.querySelector('.model-info').innerHTML = `
+                <h3>Model Not Found</h3>
+                <p>Please make sure the model files are in the "models" folder in your GitHub repository.</p>
+                <p>For GitHub Pages, your repository structure should look like:</p>
+                <ul>
+                    <li>index.html (this file)</li>
+                    <li>models/</li>
+                    <li>  └── object1.obj</li>
+                    <li>  └── object2.obj</li>
+                    <li>  └── ...etc</li>
+                </ul>
+            `;
+        }
+        
+        // Event listeners
+        document.getElementById('model-select').addEventListener('change', function() {
+            loadModel(this.value);
+        });
+        
+        document.getElementById('fullscreen-btn').addEventListener('click', function() {
+            const viewerContainer = document.querySelector('.viewer-container');
+            viewerContainer.classList.add('fullscreen');
+            
+            // Create exit button
+            const exitBtn = document.createElement('button');
+            exitBtn.textContent = 'Exit Full Screen';
+            exitBtn.classList.add('exit-fullscreen');
+            exitBtn.addEventListener('click', exitFullscreen);
+            document.body.appendChild(exitBtn);
+            
+            // Update renderer size
+            onWindowResize();
+        });
+        
+        document.getElementById('reset-view').addEventListener('click', function() {
+            controls.reset();
+        });
+        
+        document.getElementById('background-select').addEventListener('change', function() {
+            switch(this.value) {
+                case 'dark':
+                    scene.background = new THREE.Color(0x0c0c0c);
+                    break;
+                case 'light':
+                    scene.background = new THREE.Color(0xf0f0f0);
+                    break;
+                case 'gradient':
+                    // Create a gradient background
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 32;
+                    canvas.height = 32;
+                    const context = canvas.getContext('2d');
+                    
+                    const gradient = context.createLinearGradient(0, 0, 0, 32);
+                    gradient.addColorStop(0, '#1a1a1a');
+                    gradient.addColorStop(1, '#0c0c0c');
+                    
+                    context.fillStyle = gradient;
+                    context.fillRect(0, 0, 32, 32);
+                    
+                    const texture = new THREE.CanvasTexture(canvas);
+                    scene.background = texture;
+                    break;
+            }
+        });
+        
+        function exitFullscreen() {
+            const viewerContainer = document.querySelector('.viewer-container');
+            viewerContainer.classList.remove('fullscreen');
+            
+            // Remove exit button
+            const exitBtn = document.querySelector('.exit-fullscreen');
+            if (exitBtn) {
+                exitBtn.remove();
+            }
+            
+            // Update renderer size
+            onWindowResize();
+        }
+        
+        // Initialize when page loads
+        window.onload = init;
+    </script>
+</body>
+</html>
