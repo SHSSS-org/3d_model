@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Model Viewer with GLB Support</title>
+    <title>3D Model Viewer - Fixed Loading</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
@@ -537,7 +537,7 @@
                 </div>
                 <div class="logo-text">3D Viewer</div>
             </div>
-            <h1>3D Model Viewer with GLB Support</h1>
+            <h1>3D Model Viewer - Fixed Loading</h1>
             <div class="nvidia-accent"></div>
             <p>Upload 3D models and textures directly from your device</p>
         </header>
@@ -546,7 +546,7 @@
             <div class="viewer-section">
                 <div class="viewer-container">
                     <div id="model-viewer"></div>
-                    <div class="loading">
+                    <div class="loading" id="loading-indicator">
                         <div class="spinner"></div>
                         <p>Loading sample model...</p>
                     </div>
@@ -731,8 +731,8 @@
         // Load a sample model for demonstration
         function loadSampleModel(type) {
             // Show loading indicator
-            document.querySelector('.loading').style.display = 'block';
-            document.querySelector('.loading p').textContent = `Loading sample ${type.toUpperCase()} model...`;
+            document.getElementById('loading-indicator').style.display = 'block';
+            document.querySelector('#loading-indicator p').textContent = `Loading sample ${type.toUpperCase()} model...`;
             
             // Remove current model if exists
             if (currentModel) {
@@ -758,32 +758,40 @@
                             <h3>Sample GLB Model Loaded</h3>
                             <p>Now viewing: Duck.glb</p>
                             <p>Format: GLB (Binary)</p>
-                            <p>GLB files contain textures and materials - no need to add textures separately</p>
+                            <p>GLB files contain textures and materials</p>
                         `;
                         
                         // Hide loading indicator
-                        document.querySelector('.loading').style.display = 'none';
+                        document.getElementById('loading-indicator').style.display = 'none';
                         document.getElementById('status-message').textContent = 'Sample GLB model loaded successfully!';
                     },
                     function(xhr) {
                         // Progress callback
                         const percent = (xhr.loaded / xhr.total * 100);
-                        document.querySelector('.loading p').textContent = `Loading: ${percent.toFixed(1)}%`;
+                        document.querySelector('#loading-indicator p').textContent = `Loading: ${percent.toFixed(1)}%`;
                     },
                     function(error) {
                         console.error('Error loading sample model:', error);
-                        showErrorModel('Failed to load sample GLB model: ' + error.message);
+                        showErrorModel('Failed to load sample GLB model. Please try another model.');
                     }
                 );
             } else if (type === 'obj') {
                 // Load OBJ sample
                 const objLoader = new THREE.OBJLoader();
                 
-                fetch(sampleModels.obj)
-                    .then(response => response.text())
-                    .then(modelData => {
+                // Use a more reliable approach for loading OBJ files
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', sampleModels.obj);
+                xhr.onprogress = function(e) {
+                    if (e.lengthComputable) {
+                        const percent = (e.loaded / e.total * 100);
+                        document.querySelector('#loading-indicator p').textContent = `Loading: ${percent.toFixed(1)}%`;
+                    }
+                };
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
                         try {
-                            const object = objLoader.parse(modelData);
+                            const object = objLoader.parse(xhr.responseText);
                             currentModel = object;
                             
                             // Set default material if none exists
@@ -811,17 +819,20 @@
                             `;
                             
                             // Hide loading indicator
-                            document.querySelector('.loading').style.display = 'none';
+                            document.getElementById('loading-indicator').style.display = 'none';
                             document.getElementById('status-message').textContent = 'Sample OBJ model loaded successfully!';
                         } catch (error) {
                             console.error('Error parsing sample model:', error);
-                            showErrorModel('Error parsing OBJ file: ' + error.message);
+                            showErrorModel('Error parsing OBJ file. Please try another model.');
                         }
-                    })
-                    .catch(error) {
-                        console.error('Error loading sample model:', error);
-                        showErrorModel('Failed to load sample OBJ model: ' + error.message);
-                    };
+                    } else {
+                        showErrorModel('Failed to load sample OBJ model. Please try another model.');
+                    }
+                };
+                xhr.onerror = function() {
+                    showErrorModel('Failed to load sample OBJ model. Please try another model.');
+                };
+                xhr.send();
             }
         }
         
@@ -857,8 +868,8 @@
             }
             
             // Show loading indicator
-            document.querySelector('.loading').style.display = 'block';
-            document.querySelector('.loading p').textContent = 'Loading 3D Model...';
+            document.getElementById('loading-indicator').style.display = 'block';
+            document.querySelector('#loading-indicator p').textContent = 'Loading 3D Model...';
             document.getElementById('status-message').textContent = 'Loading model...';
             document.getElementById('status-message').className = 'success-message';
             
@@ -873,57 +884,56 @@
                 // Load OBJ file
                 const objLoader = new THREE.OBJLoader();
                 
-                fetch(fileURL)
-                    .then(response => response.text())
-                    .then(modelData => {
-                        try {
-                            const object = objLoader.parse(modelData);
-                            currentModel = object;
-                            
-                            // Set default material if none exists
-                            object.traverse(function(child) {
-                                if (child.isMesh) {
-                                    if (!child.material || child.material.length === 0) {
-                                        child.material = new THREE.MeshPhongMaterial({
-                                            color: 0x76b900,
-                                            shininess: 100,
-                                            specular: 0x222222
-                                        });
-                                    }
-                                    
-                                    // Apply texture if one is selected
-                                    if (currentTexture) {
-                                        child.material.map = currentTexture;
-                                        child.material.needsUpdate = true;
-                                    }
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const object = objLoader.parse(event.target.result);
+                        currentModel = object;
+                        
+                        // Set default material if none exists
+                        object.traverse(function(child) {
+                            if (child.isMesh) {
+                                if (!child.material || child.material.length === 0) {
+                                    child.material = new THREE.MeshPhongMaterial({
+                                        color: 0x76b900,
+                                        shininess: 100,
+                                        specular: 0x222222
+                                    });
                                 }
-                            });
-                            
-                            scene.add(object);
-                            
-                            // Center the model
-                            centerModel(object);
-                            
-                            // Update model info
-                            document.querySelector('.model-info').innerHTML = `
-                                <h3>Model Loaded Successfully</h3>
-                                <p>Now viewing: ${fileName}</p>
-                                <p>Format: OBJ</p>
-                                <p>Tip: You can apply a texture using the controls on the right</p>
-                            `;
-                            
-                            // Hide loading indicator
-                            document.querySelector('.loading').style.display = 'none';
-                            document.getElementById('status-message').textContent = 'Model loaded successfully!';
-                        } catch (error) {
-                            console.error('Error parsing model:', error);
-                            showErrorModel('Error parsing OBJ file: ' + error.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading model:', error);
-                        showErrorModel('Failed to load model: ' + error.message);
-                    });
+                                
+                                // Apply texture if one is selected
+                                if (currentTexture) {
+                                    child.material.map = currentTexture;
+                                    child.material.needsUpdate = true;
+                                }
+                            }
+                        });
+                        
+                        scene.add(object);
+                        
+                        // Center the model
+                        centerModel(object);
+                        
+                        // Update model info
+                        document.querySelector('.model-info').innerHTML = `
+                            <h3>Model Loaded Successfully</h3>
+                            <p>Now viewing: ${fileName}</p>
+                            <p>Format: OBJ</p>
+                            <p>Tip: You can apply a texture using the controls on the right</p>
+                        `;
+                        
+                        // Hide loading indicator
+                        document.getElementById('loading-indicator').style.display = 'none';
+                        document.getElementById('status-message').textContent = 'Model loaded successfully!';
+                    } catch (error) {
+                        console.error('Error parsing model:', error);
+                        showErrorModel('Error parsing OBJ file. The file might be corrupted or invalid.');
+                    }
+                };
+                reader.onerror = function() {
+                    showErrorModel('Failed to read the file. Please try another file.');
+                };
+                reader.readAsText(file);
             } else if (extension === 'glb' || extension === 'gltf') {
                 // Load GLB/GLTF file
                 const gltfLoader = new THREE.GLTFLoader();
@@ -946,17 +956,17 @@
                         `;
                         
                         // Hide loading indicator
-                        document.querySelector('.loading').style.display = 'none';
+                        document.getElementById('loading-indicator').style.display = 'none';
                         document.getElementById('status-message').textContent = 'Model loaded successfully!';
                     },
                     function(xhr) {
                         // Progress callback
                         const percent = (xhr.loaded / xhr.total * 100);
-                        document.querySelector('.loading p').textContent = `Loading: ${percent.toFixed(1)}%`;
+                        document.querySelector('#loading-indicator p').textContent = `Loading: ${percent.toFixed(1)}%`;
                     },
                     function(error) {
                         console.error('Error loading model:', error);
-                        showErrorModel('Failed to load GLB/GLTF model: ' + error.message);
+                        showErrorModel('Failed to load GLB/GLTF model. The file might be corrupted or invalid.');
                     }
                 );
             } else {
@@ -971,9 +981,9 @@
             const center = box.getCenter(new THREE.Vector3());
             const size = box.getSize(new THREE.Vector3());
             
-            object.position.x -= center.x;
-            object.position.y -= center.y;
-            object.position.z -= center.z;
+            object.position.x = -center.x;
+            object.position.y = -center.y;
+            object.position.z = -center.z;
             
             // Adjust camera
             const maxDim = Math.max(size.x, size.y, size.z);
@@ -1013,7 +1023,7 @@
             document.getElementById('status-message').className = 'error-message';
             
             // Hide loading indicator
-            document.querySelector('.loading').style.display = 'none';
+            document.getElementById('loading-indicator').style.display = 'none';
         }
         
         // Apply texture to the model
