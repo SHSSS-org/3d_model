@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SHSSS Headlines - 3D Model Viewer</title>
+    <title>3D Model Viewer with Google Drive</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
@@ -14,7 +14,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
         body {
@@ -25,7 +25,7 @@
         }
         
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -151,18 +151,9 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
         
-        select {
-            background: linear-gradient(to bottom, #2b2b2b 0%, #1f1f1f 100%);
-            color: #76b900;
-            appearance: none;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2376b900'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 15px center;
-            background-size: 16px;
-        }
-        
         input {
             cursor: text;
+            margin-bottom: 10px;
         }
         
         select:hover, button:hover {
@@ -315,12 +306,10 @@
         .contact a {
             color: #76b900;
             text-decoration: none;
-            transition: color 0.3s;
         }
         
         .contact a:hover {
             text-decoration: underline;
-            color: #5b8c00;
         }
         
         @media (max-width: 768px) {
@@ -346,7 +335,6 @@
             }
         }
         
-        /* NVIDIA style accents */
         .nvidia-accent {
             height: 4px;
             background: linear-gradient(to right, #76b900 0%, #5b8c00 100%);
@@ -368,7 +356,7 @@
             margin-bottom: 10px;
         }
 
-        .github-info {
+        .drive-info {
             background: rgba(30, 30, 30, 0.6);
             padding: 15px;
             border-radius: 8px;
@@ -376,21 +364,20 @@
             border-left: 3px solid #76b900;
         }
 
-        .github-info h3 {
+        .drive-info h3 {
             color: #76b900;
             margin-bottom: 10px;
         }
 
-        .github-info a {
+        .drive-info a {
             color: #76b900;
             text-decoration: none;
         }
 
-        .github-info a:hover {
+        .drive-info a:hover {
             text-decoration: underline;
         }
 
-        /* Toggle switch for torch */
         .toggle-container {
             display: flex;
             align-items: center;
@@ -450,40 +437,30 @@
             background-color: white;
         }
 
-        .tab-container {
-            display: flex;
-            margin-bottom: 15px;
+        .texture-controls {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(118, 185, 0, 0.3);
+        }
+
+        .texture-preview {
+            width: 100%;
+            height: 100px;
+            background-color: #2b2b2b;
             border-radius: 6px;
-            overflow: hidden;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 10px;
-            text-align: center;
-            background: #2b2b2b;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .tab.active {
-            background: #76b900;
-            color: #0c0c0c;
-            font-weight: bold;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .drive-info {
             margin-top: 10px;
-            font-size: 0.9rem;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: #888;
+            font-size: 0.9rem;
+        }
+
+        .texture-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
         }
     </style>
 </head>
@@ -497,11 +474,11 @@
                         <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
                     </svg>
                 </div>
-                <div class="logo-text">SHSSS</div>
+                <div class="logo-text">3D Viewer</div>
             </div>
-            <h1>3D Model Viewer</h1>
+            <h1>3D Model Viewer with Google Drive</h1>
             <div class="nvidia-accent"></div>
-            <p>Explore our collection of high-quality 3D models with real-time rendering</p>
+            <p>Load 3D models directly from Google Drive and customize with textures</p>
         </header>
         
         <div class="main-content">
@@ -510,67 +487,35 @@
                     <div id="model-viewer"></div>
                     <div class="loading">
                         <div class="spinner"></div>
-                        <p>Loading 3D Model...</p>
+                        <p>Waiting for model...</p>
                     </div>
                 </div>
                 
                 <div class="model-info">
                     <h3>Model Information</h3>
-                    <p>Select a model from the dropdown to view details and interact with the 3D rendering.</p>
+                    <p>Load a model from Google Drive to view details and interact with the 3D rendering.</p>
                 </div>
 
-                <div class="github-info">
+                <div class="drive-info">
                     <h3>Google Drive Integration</h3>
-                    <p>You can now load models directly from Google Drive. Make sure to set the sharing permissions to "Anyone with the link".</p>
+                    <p>Load models directly from Google Drive. Make sure to set the sharing permissions to "Anyone with the link".</p>
                 </div>
             </div>
             
             <div class="controls-section">
                 <h2>Controls</h2>
                 
-                <div class="tab-container">
-                    <div class="tab active" data-tab="local">Local Models</div>
-                    <div class="tab" data-tab="drive">Google Drive</div>
-                </div>
-                
-                <div class="tab-content active" id="local-tab">
-                    <div class="control-group">
-                        <label for="model-select">Select 3D Model:</label>
-                        <select id="model-select">
-                            <option value="models/object1.obj">Object 1 (OBJ)</option>
-                            <option value="models/object2.obj">Object 2 (OBJ)</option>
-                            <option value="models/object3.glb">Object 3 (GLB)</option>
-                            <option value="models/object4.glb">Object 4 (GLB)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="control-group">
-                        <button id="load-local-model">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2L2 7l10 5 10-5-10-5zm0 2.5L20 7l-8 4-8-4 8-4.5z"/>
-                                <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
-                            </svg>
-                            Load Selected Model
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="tab-content" id="drive-tab">
-                    <div class="control-group">
-                        <label for="drive-link">Google Drive Link:</label>
-                        <input type="text" id="drive-link" placeholder="Paste Google Drive shareable link">
-                        <p class="drive-info">Make sure the file is shared with "Anyone with the link"</p>
-                    </div>
-                    
-                    <div class="control-group">
-                        <button id="load-drive-model">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2L2 7l10 5 10-5-10-5zm0 2.5L20 7l-8 4-8-4 8-4.5z"/>
-                                <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
-                            </svg>
-                            Load from Google Drive
-                        </button>
-                    </div>
+                <div class="control-group">
+                    <label for="drive-link">Google Drive Link:</label>
+                    <input type="text" id="drive-link" placeholder="Paste Google Drive shareable link">
+                    <p class="drive-info">Example: https://drive.google.com/file/d/FILE_ID/view</p>
+                    <button id="load-drive-model">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zm0 2.5L20 7l-8 4-8-4 8-4.5z"/>
+                            <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        Load from Google Drive
+                    </button>
                 </div>
                 
                 <div class="control-group">
@@ -608,26 +553,30 @@
                         </label>
                     </div>
                 </div>
+
+                <div class="control-group texture-controls">
+                    <label for="texture-upload">Apply Texture (for OBJ models):</label>
+                    <input type="file" id="texture-upload" accept="image/*">
+                    <div class="texture-preview" id="texture-preview">No texture selected</div>
+                    <button id="apply-texture" class="secondary">Apply Texture</button>
+                </div>
             </div>
         </div>
         
         <div class="instructions">
-            <h2>Navigation Instructions</h2>
+            <h2>Instructions</h2>
             <ul>
+                <li><strong>Google Drive:</strong> Share your model file, copy the link, and paste it above</li>
                 <li><strong>Desktop:</strong> Drag to rotate, scroll to zoom, right-drag to pan</li>
                 <li><strong>Mobile:</strong> One finger to rotate, two fingers pinch to zoom, two fingers drag to pan</li>
-                <li>Use the dropdown to switch between different 3D models</li>
-                <li>Click the full screen button for an immersive viewing experience</li>
                 <li>Toggle the torch light to illuminate the model from the camera's perspective</li>
-                <li>Use the Google Drive tab to load models directly from your Drive</li>
+                <li>Apply custom textures to OBJ models using the texture upload option</li>
             </ul>
         </div>
         
         <footer>
-            <div class="powered-by">Powered by <span>flovvnetc</span></div>
-            <div class="copyright">© 2023 SHSSS Headlines. All rights reserved.</div>
-            <div class="contact">Contact: <a href="mailto:info@shsss-headlines.com">info@shsss-headlines.com</a></div>
-            <div class="contact">GitHub: <a href="https://github.com/yourusername/shsss-3d-viewer" target="_blank">github.com/yourusername/shsss-3d-viewer</a></div>
+            <div class="powered-by">Powered by <span>Three.js</span> & <span>Google Drive</span></div>
+            <div class="copyright">© 2023 3D Model Viewer. All rights reserved.</div>
         </footer>
     </div>
 
@@ -637,6 +586,7 @@
         let currentModel = null;
         let torchLight = null;
         let isTorchOn = false;
+        let currentTexture = null;
         
         // Initialize the 3D viewer
         function init() {
@@ -657,7 +607,7 @@
             renderer.setPixelRatio(window.devicePixelRatio);
             document.getElementById('model-viewer').appendChild(renderer.domElement);
             
-            // Add directional lights (NVIDIA-style lighting)
+            // Add directional lights
             const light1 = new THREE.DirectionalLight(0x76b900, 0.5);
             light1.position.set(5, 5, 5);
             scene.add(light1);
@@ -687,11 +637,11 @@
             // Handle window resize
             window.addEventListener('resize', onWindowResize);
             
-            // Load initial model
-            loadModel('models/object1.obj');
-            
             // Start animation loop
             animate();
+            
+            // Hide loading indicator initially
+            document.querySelector('.loading').style.display = 'none';
         }
         
         // Animation loop
@@ -728,11 +678,11 @@
                 return `https://drive.google.com/uc?export=download&id=${fileId}`;
             }
             
-            // If it's a different format, return as-is (might work for some cases)
+            // If it's a different format, return as-is
             return url;
         }
         
-        // Load a 3D model
+        // Load a 3D model from Google Drive
         function loadModel(modelPath) {
             // Remove current model if exists
             if (currentModel) {
@@ -741,6 +691,7 @@
             
             // Show loading indicator
             document.querySelector('.loading').style.display = 'block';
+            document.querySelector('.loading p').textContent = 'Loading 3D Model...';
             
             // Check file extension
             const extension = modelPath.split('.').pop().toLowerCase();
@@ -771,6 +722,12 @@
                                             specular: 0x222222
                                         });
                                     }
+                                    
+                                    // Apply texture if one is selected
+                                    if (currentTexture) {
+                                        child.material.map = currentTexture;
+                                        child.material.needsUpdate = true;
+                                    }
                                 }
                             });
                             
@@ -784,6 +741,7 @@
                                 <h3>Model Loaded Successfully</h3>
                                 <p>Now viewing: ${modelPath.split('/').pop()}</p>
                                 <p>Format: OBJ</p>
+                                <p>Tip: You can apply a texture using the controls on the right</p>
                             `;
                             
                             // Hide loading indicator
@@ -824,7 +782,8 @@
                     },
                     function(xhr) {
                         // Progress callback
-                        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+                        const percent = (xhr.loaded / xhr.total * 100);
+                        document.querySelector('.loading p').textContent = `Loading: ${percent.toFixed(1)}%`;
                     },
                     function(error) {
                         console.error('Error loading model:', error);
@@ -873,28 +832,39 @@
             
             // Add a message to the model info box
             document.querySelector('.model-info').innerHTML = `
-                <h3>Model Not Found</h3>
-                <p>Please make sure the model files are accessible.</p>
-                <p>For Google Drive links, ensure the file is shared with "Anyone with the link".</p>
+                <h3>Model Not Found or Failed to Load</h3>
+                <p>Please make sure:</p>
+                <ul>
+                    <li>The Google Drive link is correct</li>
+                    <li>The file is shared with "Anyone with the link"</li>
+                    <li>You're using a supported format (.obj, .glb, .gltf)</li>
+                </ul>
             `;
         }
         
-        // Event listeners
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                
-                this.classList.add('active');
-                document.getElementById(this.dataset.tab + '-tab').classList.add('active');
+        // Apply texture to the model
+        function applyTexture() {
+            if (!currentModel) {
+                alert('Please load a model first');
+                return;
+            }
+            
+            if (!currentTexture) {
+                alert('Please select a texture first');
+                return;
+            }
+            
+            currentModel.traverse(function(child) {
+                if (child.isMesh) {
+                    child.material.map = currentTexture;
+                    child.material.needsUpdate = true;
+                }
             });
-        });
+            
+            alert('Texture applied successfully!');
+        }
         
-        document.getElementById('load-local-model').addEventListener('click', function() {
-            const modelPath = document.getElementById('model-select').value;
-            loadModel(modelPath);
-        });
-        
+        // Event listeners
         document.getElementById('load-drive-model').addEventListener('click', function() {
             const driveLink = document.getElementById('drive-link').value;
             if (!driveLink) {
@@ -957,6 +927,37 @@
             toggleTorch(this.checked);
         });
         
+        document.getElementById('texture-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            if (!file.type.match('image.*')) {
+                alert('Please select an image file');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    // Create texture from image
+                    currentTexture = new THREE.Texture(img);
+                    currentTexture.needsUpdate = true;
+                    
+                    // Show preview
+                    const preview = document.getElementById('texture-preview');
+                    preview.innerHTML = '';
+                    const previewImg = document.createElement('img');
+                    previewImg.src = event.target.result;
+                    preview.appendChild(previewImg);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        document.getElementById('apply-texture').addEventListener('click', applyTexture);
+        
         function exitFullscreen() {
             const viewerContainer = document.querySelector('.viewer-container');
             viewerContainer.classList.remove('fullscreen');
@@ -973,6 +974,9 @@
         
         // Initialize when page loads
         window.onload = init;
+        
+        // Add example link for testing
+        document.getElementById('drive-link').value = 'https://drive.google.com/file/d/17NEnxRVkGtyfc4QCLoeU3NRR-gyKKILr/view?usp=drivesdk';
     </script>
 </body>
 </html>
