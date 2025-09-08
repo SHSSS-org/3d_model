@@ -828,6 +828,9 @@
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
+            if (isTorchOn && torchLight) {
+                
+            }
             controls.update();
             renderer.render(scene, camera);
         }
@@ -842,7 +845,14 @@
         // Toggle torch light
         function toggleTorch(isOn) {
             isTorchOn = isOn;
-            torchLight.visible = isOn;
+            if (isOn) {
+                // Add the torch light to the scene
+                scene.add(camera); // The camera now contains the torch light
+                torchLight.visible = true;
+            } else {
+                // Remove the torch light from the scene
+                torchLight.visible = false;
+            }
             
             // Update UI
             document.getElementById('torch-toggle').checked = isOn;
